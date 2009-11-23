@@ -1,0 +1,2334 @@
+# 
+# Simulation of Biped Robot 09-06-2007
+# by Juan Bernardo Tamez P.
+#
+
+@path "/Biped".
+
+@use PhysicalControl.
+@use Joint.
+@use Spring.
+@use MultiBody.
+@use Link.
+@use Shape.
+@use Stationary.
+@use Drawing.
+@use File.
+
+########
+## FILES
+########
+
+@define SEED_FILE_NAME "random_seed.txt".
+@define SIM_DATA_FILE_NAME "CPG_Biped_5a_sim_data.txt".
+@define LOG_FILE_NAME "CPG_Biped_5a_log.txt".
+@define MAX_ROW_VALUES 50.
+
+####################
+## GENERAL CONSTANTS
+####################
+
+@define JOINT_STR_LIMIT 1000.
+#@define JOINT_STR_LIMIT 100.
+@define JOINT_DAMPING 3.
+
+@define NUM_JOINTS 20.
+@define NUM_LINKS 18.
+
+@define BODY_E 0.0.
+@define BODY_ET 0.0.
+@define BODY_MU 1.0.
+
+@define SURFACE_E 0.0.
+@define SURFACE_ET 0.0.
+@define SURFACE_MU 1.0.
+
+@define BODY_TRANSPARENCY 1.0.
+
+@define GRAVITY (0, -9.80665, 0).
+@define MATH_PI 3.141592.
+@define MATH_E 2.718281.
+@define MAX_RANDOM 2000000000.
+
+@define ITERATION_STEP 0.025.
+#@define INTEGRATION_STEP 0.004.
+
+@define SIM_TIME 120.
+@define START_PAUSE 1.
+@define END_PAUSE 1.
+@define TOTAL_SIM_TIME 122.
+
+@define CYCLE_TIME 0.05.
+
+#@define TESTS_PER_ROUND 1.
+@define ROUNDS_PER_BODY 5.
+
+@define MIN_ALTITUDE 0.2.
+
+#@define BIPED_SEPARATION 1.5.
+
+################
+## PD CONTROLLER
+################
+
+@define PROPORTIONAL_GAIN 0.2.
+@define MAX_NOISE 0.0001.
+
+###########
+## GENETICS
+###########
+
+@define MAX_VALUE 1.0.
+
+@define MAX_MUTATION_VAL 1.0.
+
+@define POPULATION_SIZE 100.
+@define POPULATION_SAMPLE_SIZE 20.
+@define MAX_GENERATIONS 1.
+
+@define FITNESS_DEC 0.01.
+
+#############
+## EVALUATION
+#############
+
+@define FLOOR_DISTANCE 0.5.
+
+#######
+## CPGS
+#######
+
+#@define TU_MAX 0.015.
+@define TU_MAX 0.05.
+@define TU_MIN 0.0005.
+#@define TV_MAX 0.2.
+@define TV_MAX 0.5.
+@define TV_MIN 0.005.
+#@define BETA_MAX 2.5.
+@define BETA_MAX 3.5.
+@define BETA_MIN 1.5.
+#@define U0_MAX 0.5.
+@define U0_MAX 1.0.
+@define U0_MIN 0.
+@define IW_MAX -2.0.
+@define IW_MIN -2.0.
+@define W_MAX 0.8.
+@define W_MIN -0.8.
+
+#@define MAX_RANDOM_U 0.1.
+#@define MAX_RANDOM_V 0.1.
+
+############
+## FEEDBACKS
+############
+
+@define IMPULSE 1.
+#@define RPOS_FACTOR 3.0.
+#@define FEEDBACKS_PER_JOINT 3.
+@define FEEDBACK_COUNT 50.
+
+####################
+## SUPPORT CONSTANTS
+####################
+
+@define SUPPORT_OFFSET_X 0.25.
+@define SUPPORT_OFFSET_Y 0.25.
+@define SUPPORT_OFFSET_Z 0.25.
+
+@define SUPPORT_RADIUS 0.1.
+@define SUPPORT_BOX_MASS 0.000001.
+
+@define TIME_TO_DETACH 0.001.
+
+###################
+## ROBOT DIMENSIONS
+###################
+
+@define BOUND_LIMIT 1.0.
+
+# scaling
+@define SCALE_FACTOR 10.
+
+# head
+#@define HEAD_RADIUS 0.39.
+#@define HEAD_MASS 0.3.
+@define HEAD_RADIUS 0.0407.
+@define HEAD_MASS 0.4865.
+
+#@define NECK_OFFSET 0.05.
+#@define NECK_HEIGHT 0.1.
+@define NECK_OFFSET 0.0052.
+@define NECK_HEIGHT 0.0104.
+
+# torso
+#@define TORSO_BOX_LENGTH 1.37.
+#@define TORSO_BOX_WIDTH 0.96.
+#@define TORSO_BOX_HEIGHT 1.41.
+#@define TORSO_BOX_MASS 1.8.
+@define TORSO_BOX_LENGTH 0.1431.
+@define TORSO_BOX_WIDTH 0.1003.
+@define TORSO_BOX_HEIGHT 0.1473.
+@define TORSO_BOX_MASS 2.9189.
+
+# torso extension
+#@define TORSO_EXT_LENGTH 0.3.
+#@define TORSO_EXT_WIDTH 0.01.
+#@define TORSO_EXT_HEIGHT 0.01.
+#@define TORSO_EXT_MASS 0.000001.
+@define TORSO_EXT_LENGTH 0.0313.
+@define TORSO_EXT_WIDTH 0.0010.
+@define TORSO_EXT_HEIGHT 0.0010.
+@define TORSO_EXT_MASS 0.000001.
+
+# shoulders
+#@define SHOULDER_LENGTH 0.445.
+#@define SHOULDER_WIDTH 1.017.
+#@define SHOULDER_HEIGHT 0.536.
+#@define SHOULDER_MASS 0.5.
+@define SHOULDER_LENGTH 0.0465.
+@define SHOULDER_WIDTH 0.1063.
+@define SHOULDER_HEIGHT 0.0560.
+@define SHOULDER_MASS 0.8108.
+
+# upper arms
+#@define UPPER_ARM_LENGTH 0.445.
+#@define UPPER_ARM_WIDTH 0.398.
+#@define UPPER_ARM_HEIGHT 0.506.
+#@define UPPER_ARM_MASS 0.2.
+@define UPPER_ARM_LENGTH 0.0465.
+@define UPPER_ARM_WIDTH 0.0416.
+@define UPPER_ARM_HEIGHT 0.0529.
+@define UPPER_ARM_MASS 0.3243.
+
+#@define ELBOW_RADIUS 0.134.
+@define ELBOW_RADIUS 0.0140.
+
+# lower arms
+#@define LOWER_ARM_LENGTH 0.445.
+#@define LOWER_ARM_WIDTH 0.316.
+#@define LOWER_ARM_HEIGHT 0.6.
+#@define LOWER_ARM_MASS 0.2.
+@define LOWER_ARM_LENGTH 0.0465.
+@define LOWER_ARM_WIDTH 0.0330.
+@define LOWER_ARM_HEIGHT 0.0627.
+@define LOWER_ARM_MASS 0.3243.
+
+#@define HIP_OFFSET 0.06.
+@define HIP_OFFSET 0.0063.
+
+# hips
+#@define HIP_LENGTH 0.273.
+#@define HIP_WIDTH 0.273.
+#@define HIP_HEIGHT 0.2.
+#@define HIP_MASS 0.1.
+@define HIP_LENGTH 0.0285.
+@define HIP_WIDTH 0.0285.
+@define HIP_HEIGHT 0.0209.
+@define HIP_MASS 0.1622.
+
+# thighs
+#@define THIGH_LENGTH 0.56.
+#@define THIGH_WIDTH 0.56.
+#@define THIGH_HEIGHT 1.3.
+#@define THIGH_MASS 0.25.
+@define THIGH_LENGTH 0.0585.
+@define THIGH_WIDTH 0.0585.
+@define THIGH_HEIGHT 0.1358.
+@define THIGH_MASS 0.4054.
+
+#@define KNEE_RADIUS 0.05.
+@define KNEE_RADIUS 0.0052.
+
+# shanks
+#@define SHANK_LENGTH 0.56.
+#@define SHANK_WIDTH 0.56.
+#@define SHANK_HEIGHT 0.964.
+#@define SHANK_MASS 0.25.
+@define SHANK_LENGTH 0.0585.
+@define SHANK_WIDTH 0.0585.
+@define SHANK_HEIGHT 0.1007.
+@define SHANK_VISUAL_HEIGHT 0.06.
+@define SHANK_MASS 0.4054.
+
+#@define HEEL_RADIUS 0.05.
+@define HEEL_RADIUS 0.0052.
+
+# feet
+#@define FOOT_LENGTH 0.6.
+#@define FOOT_WIDTH 0.956.
+#@define FOOT_HEIGHT 0.095.
+#@define FOOT_MASS 0.1.
+@define FOOT_LENGTH 0.0627.
+@define FOOT_WIDTH 0.0999.
+@define FOOT_HEIGHT 0.0099.
+@define FOOT_MASS 0.1622.
+
+# torso position (absolute)
+#@define TORSO_POS_X 0.
+#@define TORSO_POS_Y 3.35.
+#@define TORSO_POS_Z 0.
+@define TORSO_POS_X 0.
+@define TORSO_POS_Y 0.3500.
+@define TORSO_POS_Z 0.
+
+###############
+## JOINT LIMITS
+###############
+
+#@define LS_JOINT_MIN_1 -3.1415.
+#@define LS_JOINT_MAX_1 3.1415.
+#@define LS_JOINT_MIN_2 -3.1415.
+#@define LS_JOINT_MAX_2 3.1415.
+
+#@define RS_JOINT_MIN_1 -3.1415.
+#@define RS_JOINT_MAX_1 3.1415.
+#@define RS_JOINT_MIN_2 -3.1415.
+#@define RS_JOINT_MAX_2 3.1415.
+
+@define LS_JOINT_MIN_1 -3.
+@define LS_JOINT_MAX_1 0.
+@define LS_JOINT_MIN_2 -3.
+@define LS_JOINT_MAX_2 3.
+
+@define RS_JOINT_MIN_1 0.
+@define RS_JOINT_MAX_1 3.
+@define RS_JOINT_MIN_2 -3.
+@define RS_JOINT_MAX_2 3.
+
+@define LUA_JOINT_MIN -1.5.
+@define LUA_JOINT_MAX 1.5.
+
+@define RUA_JOINT_MIN -1.5.
+@define RUA_JOINT_MAX 1.5.
+
+@define LLA_JOINT_MIN 0.
+@define LLA_JOINT_MAX 3.
+
+@define RLA_JOINT_MIN 0.
+@define RLA_JOINT_MAX 3.
+
+@define LH_JOINT_MIN -0.78.
+@define LH_JOINT_MAX 0.
+
+@define RH_JOINT_MIN 0.
+@define RH_JOINT_MAX 0.78.
+
+@define LT_JOINT_MIN_1 -1.5.
+@define LT_JOINT_MAX_1 1.5.
+@define LT_JOINT_MIN_2 -1.5.
+@define LT_JOINT_MAX_2 1.5.
+
+@define RT_JOINT_MIN_1 -1.5.
+@define RT_JOINT_MAX_1 1.5.
+@define RT_JOINT_MIN_2 -1.5.
+@define RT_JOINT_MAX_2 1.5.
+
+@define LSH_JOINT_MIN -1.5.
+@define LSH_JOINT_MAX 0.
+
+@define RSH_JOINT_MIN -1.5.
+@define RSH_JOINT_MAX 0.
+
+@define LF_JOINT_MIN_1 -1.5.
+@define LF_JOINT_MAX_1 1.5.
+@define LF_JOINT_MIN_2 -1.5.
+@define LF_JOINT_MAX_2 1.5.
+
+@define RF_JOINT_MIN_1 -1.5.
+@define RF_JOINT_MAX_1 1.5.
+@define RF_JOINT_MIN_2 -1.5.
+@define RF_JOINT_MAX_2 1.5.
+
+#######
+## CODE
+#######
+
+Controller RobotSimulation.
+
+PhysicalControl : RobotSimulation {
+	+ variables:
+		body (object).
+#		bodies (list).
+		surface (object).
+       	population (list).
+       	best-biped (object).
+       	temp-best-biped (object).
+		num-tests (int).
+		current-generation (int).
+       	current-biped-num (int).
+       	current-biped (object).
+		current-round (int).
+		adv-distance (float).
+#		adv-distances (list).
+       	current-fitness (float).
+       	current-fitness-sq (float).
+		test-fitness (float).
+#		test-fitnesses (list).
+		iCOM (vector).
+#		iCOMs (list).
+       	drawing (object).
+		numGenes (int).
+		showing-best (int).
+		penalty (int).
+		file-num (int).
+		seed (int).
+
+		sim-start-time (float).
+		next-eval-time (float).
+		
+	+ to init:
+		i (int).
+		
+		showing-best = 0.
+		numGenes = 2000.
+		num-tests = 0.
+
+		drawing = new Drawing.
+	 
+#		self set-random-seed-from-dev-random.
+		self disable-freed-instance-protection.
+
+ #		self enable-auto-disable.
+	
+#		temp = (self get-integration-step).
+#		print "integration step time: $temp".
+
+		self enable-auto-free.
+		
+		self set-iteration-step to ITERATION_STEP.
+#		self set-iteration-step to INTEGRATION_STEP.
+		
+		self set-background-color to (.4, .4, .4).
+        
+		surface = (new Stationary register with-shape (new Cube init-with size (100, 0.1, 100)) at-location (0, 0, 0)).
+        
+		surface set-e to SURFACE_E.
+		surface set-eT to SURFACE_ET.
+		surface set-mu to SURFACE_MU.
+		
+		self set-gravity to GRAVITY.
+        
+		self point-camera at (0, 10*SCALE_FACTOR, 0) from (1.0*SCALE_FACTOR, 0.1*SCALE_FACTOR, 0.25*SCALE_FACTOR).
+
+ #		body show-bounding-box.
+ #		body show-axis.
+        
+ #		self watch item body.
+        
+ #		self set-camera-target to iCOM.
+        
+		population = POPULATION_SIZE new Bipeds.
+		for i=0, i<POPULATION_SIZE, i++:
+			population{i} set-numGenes as numGenes.
+     
+		best-biped = new Biped.
+		best-biped set-numGenes as numGenes.
+		temp-best-biped = new Biped.
+		temp-best-biped set-numGenes as numGenes.
+		
+		current-generation = 0.
+		current-biped-num = 0.
+		current-round = 0.
+		current-fitness = 0.
+		current-fitness-sq = 0.
+		
+		seed = random[MAX_RANDOM].
+		
+		self load.
+		
+		randomSeed(seed).
+
+		self add-menu-separator.
+		self add-menu named "Show Best" for-method "show-best".
+		sim-start-time = (self get-time).
+    
+		test-fitness = 0.0.
+		body = new BipedBody.
+		
+		if (1) && ((self get-argument-count) > 1): {
+			current-biped = population{current-biped-num}.
+			body restart-biped with current-biped at
+				(TORSO_POS_X*SCALE_FACTOR, TORSO_POS_Y*SCALE_FACTOR, TORSO_POS_Z*SCALE_FACTOR).
+    
+#			for i=0, i < TESTS_PER_ROUND, i++: {
+#				bodies{i} = new BipedBody.
+#			}
+#		
+#			for i=0, i < TESTS_PER_ROUND, i++: {
+#				test-fitnesses{i} = 0.0.
+#		
+#				bodies{i} restart-biped with current-biped at
+#					(TORSO_POS_X*SCALE_FACTOR + (i - TESTS_PER_ROUND/2)*BIPED_SEPARATION*SCALE_FACTOR, TORSO_POS_Y*SCALE_FACTOR, TORSO_POS_Z*SCALE_FACTOR).
+#			}
+		
+			next-eval-time = (sim-start-time + START_PAUSE).
+			self schedule method-call "set-initials" at-time next-eval-time.
+		
+			next-eval-time += CYCLE_TIME.
+			self schedule method-call "eval-progress" at-time next-eval-time.
+		
+		} else {
+			body restart-biped with best-biped at
+				(TORSO_POS_X*SCALE_FACTOR, TORSO_POS_Y*SCALE_FACTOR, TORSO_POS_Z*SCALE_FACTOR).
+		}
+		
+		print "Starting Simulation...".
+        
+	+ to set-initials:
+		i (int).
+		
+		iCOM = (body get-center-of-mass).
+		adv-distance = iCOM::z.
+			
+#		for i=0, i < TESTS_PER_ROUND, i++: {
+#			iCOMs{i} = (bodies{i} get-center-of-mass).
+#			adv-distances{i} = iCOMs{i}::z.
+#		}
+
+#	+ to eval-fitness for-body i (int):
+	+ to eval-fitness:
+#		adv-distance, result, dist-diff (float).
+		result, dist-diff (float).
+#		cOM, cCOM, iCOM (vector).
+		cOM, cCOM (vector).
+#		position-lFoot, position-rFoot (vector).
+		bound-minimum-lFoot, bound-minimum-rFoot (vector).
+		bound-maximum-lFoot, bound-maximum-rFoot (vector).
+#		posSupport0, posSupport1, posSupport2, posSupport3 (vector).
+		min-x, max-x, min-z, max-z (float).
+		pos-lFoot, pos-rFoot (vector).
+		val-x, val-y, val-z (float).
+		value, temp (float).
+#		min_y (float).
+#		temp_v (vector).
+#		body (object).
+        
+#		body = bodies{i}.
+#		iCOM = iCOMs{i}.
+#		adv-distance = adv-distances{i}.
+		
+		cOM = (body get-center-of-mass).
+		result = 0.
+		
+		cCOM = cOM - iCOM.
+		
+		dist-diff = cCOM::z - adv-distance.
+#		adv-distances{i} = cCOM::z.
+		adv-distance = cCOM::z.
+    
+#		if dist-diff < 0: {
+#			dist-diff = 0.
+#		}
+
+		pos-lFoot = (body get-position-lFoot).
+		pos-rFoot = (body get-position-rFoot).
+		
+		bound-minimum-lFoot = (body get-bound-minimum-lFoot).
+		bound-minimum-rFoot = (body get-bound-minimum-rFoot).
+		
+		bound-maximum-lFoot = (body get-bound-maximum-lFoot).
+		bound-maximum-rFoot = (body get-bound-maximum-rFoot).
+		
+		min-x = bound-minimum-rFoot::x.
+		max-x = bound-maximum-lFoot::x.
+        
+		min-z = min(bound-minimum-lFoot::z, bound-minimum-rFoot::z).
+		max-z = max(bound-maximum-lFoot::z, bound-maximum-rFoot::z).
+	
+		temp = (max-x - cOM::x).
+		value = (1/(1 + 2^(-temp*5 - 5))).
+		temp = (cOM::x - min-x).
+		value *= (1/(1 + 2^(-temp*5 - 5))).
+		temp = (max-z - cOM::z).
+		value *= (1/(1 + 2^(-temp*5 - 5))).
+		temp = (cOM::z - min-z).
+		value *= (1/(1 + 2^(-temp*5 - 5))).
+	
+		val-x = cCOM::x*cCOM::x.
+		val-y = cCOM::y*cCOM::y*10.
+		val-z = pos-lFoot::z - pos-rFoot::z.
+		val-z *= val-z*10.
+		
+		if (penalty == 0) &&
+			(min-x <= cOM::x) &&
+			(max-x >= cOM::x) &&
+			(min-z <= cOM::z) &&
+			(max-z >= cOM::z): {
+#			((FLOOR_DISTANCE > bound-minimum-lFoot::y) || (FLOOR_DISTANCE > bound-minimum-rFoot::y)): {
+			
+			result = value*(2^(-val-x))*(2^(-val-y))*(1 - 2^(-val-z))*dist-diff.
+		} else {
+			penalty = 1.
+			result = 0.
+		}
+	 
+		return result.
+        
+	+ to eval-progress:
+		i (int).
+#		current-time (float).
+		cOM (vector).
+#		best-y (float).
+	
+		if showing-best: {
+			return.
+		}
+		
+#		best-y = MIN_ALTITUDE*SCALE_FACTOR.
+#		for i=0, i < TESTS_PER_ROUND, i++: {
+#			cOM = (bodies{i} get-center-of-mass).
+#			
+#			if (cOM::y > best-y): best-y = cOM::y.
+#		}
+
+		cOM = (body get-center-of-mass).
+			
+#		current-time = (controller get-time).
+		
+#		if (current-time < (sim-start-time + TOTAL_SIM_TIME)) && (best-y > MIN_ALTITUDE*SCALE_FACTOR) && (penalty == 0): {
+		if (next-eval-time < (sim-start-time + TOTAL_SIM_TIME)) && (cOM::y > MIN_ALTITUDE*SCALE_FACTOR) && (penalty == 0): {
+#			for i=0, i < TESTS_PER_ROUND, i++: {
+#				test-fitnesses{i} += (self eval-fitness for-body i).
+#			}
+			test-fitness += (self eval-fitness).
+		
+			next-eval-time += CYCLE_TIME.
+			self schedule method-call "eval-progress" at-time next-eval-time.
+#			self schedule method-call "eval-progress" at-time (current-time + CYCLE_TIME).
+			
+		} else {
+#			for i=0, i < TESTS_PER_ROUND, i++: {
+#				bodies{i} stop-walking.
+#			}
+			body stop-walking.
+			penalty = 0.
+			
+			next-eval-time += END_PAUSE.
+			self schedule method-call "change-biped" at-time next-eval-time.
+#			self schedule method-call "change-biped" at-time (current-time + END_PAUSE).
+		}
+
+	+ to load:
+		file (object).
+		value (string).
+		values (list).
+		i (int).
+		change (int).
+		first (int).
+		second (int).
+		all-values (list).
+		size-values (int).
+    
+		file = (new File open-for-reading with-file SEED_FILE_NAME).
+		
+		if (!file): return.
+		
+		values = (file read-line-as-list with-delimiter ",").
+		
+		seed = values{0}.
+		
+		file close.
+		free file.
+    
+		file = (new File open-for-reading with-file SIM_DATA_FILE_NAME).
+		
+		if (!file): return.
+		
+		values = (file read-line-as-list with-delimiter ",").
+		
+		current-generation = values{0}.
+		current-biped-num = values{1}.
+		current-round = values{2}.
+		num-tests = values{3}.
+		current-fitness = values{4}.
+		current-fitness-sq = values{5}.
+		
+		values = (file read-line-as-list with-delimiter ",").
+		
+		best-biped set-fitness to-value values{0}.
+		temp-best-biped set-fitness to-value values{1}.
+
+		i = 0.
+		while !(file is-end-of-file) && (i < POPULATION_SIZE) && ((i + 2) < |values|): {
+			population{i} set-fitness to-value values{i + 2}.
+			i++.
+		}
+
+		i = 0.
+		change = 1.
+		first = 1.
+		second = 0.
+		while (!(file is-end-of-file)) && (i < POPULATION_SIZE): {
+			values = (file read-line-as-list with-delimiter ",").
+			
+			if change: {
+				all-values = values.
+				change = 0.
+			}
+			else {
+				foreach value in values: {
+					push value onto all-values.
+				}	
+			}
+			
+			size-values = |all-values|.
+#			print "Number values: $size-values, Number genes: $numGenes".
+#			print "$all-values".
+			
+			if size-values == numGenes: {
+				if first: {
+					best-biped set-data from all-values.
+					first = 0.
+					second = 1.
+				} else if second: {
+					temp-best-biped set-data from all-values.
+					second = 0.
+				} else {
+					population{i} set-data from all-values.
+					i++.
+				}
+				change = 1.
+			}
+		}
+		
+		file close.
+		free file.
+	
+	+ to write:
+		file (object).
+		value (float).
+		values (list).
+		write-str (string).
+		not-first (int).
+		i,j (int).
+				
+#		print "Writing file...".
+	
+		file = new File.
+		file open-for-writing with-file SEED_FILE_NAME.
+		
+		seed = random[MAX_RANDOM].
+		
+		file write-line text "$seed".
+		
+		file close.
+		free file.
+	
+		file = new File.
+		file open-for-writing with-file SIM_DATA_FILE_NAME.
+		
+		file write-line text "$current-generation,$current-biped-num,$current-round,$num-tests,$current-fitness,$current-fitness-sq".
+		
+		value = (best-biped get-fitness).
+		write-str = "$value".
+		value = (temp-best-biped get-fitness).
+		write-str = "$write-str,$value".
+		
+		for i=0, i < POPULATION_SIZE, i++: {
+			value = (population{i} get-fitness).
+	   
+			write-str = "$write-str,$value".
+		}
+			
+		file write-line text write-str.
+		
+		j = 0.
+		not-first = 0.
+		values = (best-biped get-genome-data).
+			
+		foreach value in values: {
+			if j == MAX_ROW_VALUES: {
+				j = 0.
+				not-first = 0.
+
+				file write-line text write-str.
+			}
+	   
+			if not-first: {
+				write-str = "$write-str,$value".
+			} else {
+				write-str = "$value".
+				not-first = 1.
+			}
+		
+			j++.
+		}
+			
+		file write-line text write-str.
+		
+		j = 0.
+		not-first = 0.
+		values = (temp-best-biped get-genome-data).
+			
+		foreach value in values: {
+			if j == MAX_ROW_VALUES: {
+				j = 0.
+				not-first = 0.
+
+				file write-line text write-str.
+			}
+	   
+			if not-first: {
+				write-str = "$write-str,$value".
+			} else {
+				write-str = "$value".
+				not-first = 1.
+			}
+		
+			j++.
+		}
+			
+		file write-line text write-str.
+		
+		for i=0, i < POPULATION_SIZE, i++: {
+			j = 0.
+			not-first = 0.
+			values = (population{i} get-genome-data).
+			
+			foreach value in values: {
+				if j == MAX_ROW_VALUES: {
+					j = 0.
+					not-first = 0.
+
+					file write-line text write-str.
+				}
+	   
+				if not-first: {
+					write-str = "$write-str,$value".
+				} else {
+					write-str = "$value".
+					not-first = 1.
+				}
+			
+				j++.
+			}
+			
+			file write-line text write-str.
+		}
+		
+		file close.
+		free file.
+	
+	+ to start-showing-best:
+		test-fitness = 0.0.
+		adv-distance = iCOM::z.
+		
+		sim-start-time = (self get-time).
+		
+		next-eval-time = (sim-start-time + START_PAUSE + CYCLE_TIME).
+		
+		body restart-biped with best-biped at
+			(TORSO_POS_X*SCALE_FACTOR, TORSO_POS_Y*SCALE_FACTOR, TORSO_POS_Z*SCALE_FACTOR).
+		
+	+ to show-best:
+		showing-best = 1.
+		
+		body stop-walking.
+	 
+		next-eval-time += END_PAUSE.
+		self schedule method-call "start-showing-best" at-time next-eval-time.
+	
+	+ to log text buffer (string) to-file filename (string):
+		logFile (object).
+		
+		logFile = new File.
+		logFile open-for-appending with-file filename.
+            
+		print buffer.
+		logFile write-line text buffer.
+				
+		logFile close.
+		free logFile.	
+ 
+	+ to change-biped:
+		i (int).
+		biped (object).
+		fitness (float).
+		biped-fitness (float).
+		best-fitness (float).
+		temp-best-fitness (float).
+		runtime (float).
+#		test-fitness (float).
+		buffer (string).
+		mutation (float).
+		mean (float).
+		std-dev (float).
+#		total-tests (int).
+		
+		runtime = (self get-time) - sim-start-time.
+		buffer = "Biped: $current-biped-num, Round: $current-round, Runtime: $runtime seconds.".
+		print buffer.
+        
+		biped = current-biped.
+		
+		test-fitness *= runtime.
+		current-fitness += test-fitness.
+		current-fitness-sq += test-fitness*test-fitness.
+		
+		test-fitness = 0.0.
+		adv-distance = iCOM::z.
+
+#		for i=0, i < TESTS_PER_ROUND, i++: {
+#			test-fitness = 100*(test-fitnesses{i})/(runtime + 100).
+#		
+#			current-fitness += test-fitness.
+#			current-fitness-sq += test-fitness*test-fitness.
+#		
+#			test-fitnesses{i} = 0.0.
+#			adv-distances{i} = iCOMs{i}::z.
+#		}
+        
+		current-round++.
+        
+		if current-round >= ROUNDS_PER_BODY: {
+			num-tests++.
+		
+#			total-tests = TESTS_PER_ROUND*ROUNDS_PER_BODY.
+		
+			biped-fitness = (biped get-fitness).
+#			buffer = "Biped $current-biped-num previous fitness: $biped-fitness.".
+#			print buffer.
+			
+			mean = current-fitness/ROUNDS_PER_BODY.
+			std-dev = sqrt(current-fitness-sq/ROUNDS_PER_BODY - (mean^2)).
+			
+#			fitness = mean - std-dev.
+			fitness = mean.
+			if fitness < 0.0: fitness = 0.0.
+			
+			biped set-fitness to-value fitness.
+			
+			current-fitness = 0.0.
+			current-fitness-sq = 0.0.
+			current-round = 0.
+        
+			biped-fitness = (biped get-fitness).
+			buffer = "Biped $current-biped-num fitness: $biped-fitness.".
+			print buffer.
+            
+			current-biped-num++.
+    
+			if current-biped-num >= POPULATION_SIZE: {
+				current-biped-num = 0.
+				
+				for i=0, i<POPULATION_SIZE, i+=1: {
+					population{i} reset-mutation.
+				}
+            
+				sort population with compare-fitness.
+        
+				biped-fitness = (population{0} get-fitness).
+			
+				temp-best-fitness = (best-biped get-fitness).
+				if temp-best-fitness < biped-fitness: {
+					temp-best-biped copy-data from population{0}.
+					
+					best-fitness = (best-biped get-fitness).
+					if best-fitness < biped-fitness: {
+						best-biped copy-data from temp-best-biped.
+					}
+				} else {
+					temp-best-biped set-fitness to-value (temp-best-fitness - FITNESS_DEC*|temp-best-fitness| - FITNESS_DEC).
+				}
+
+				best-fitness = (best-biped get-fitness).
+            
+				self log text "$num-tests,$current-generation,$best-fitness" to-file LOG_FILE_NAME.
+            
+				current-generation++.
+            
+				self breed-new-bipeds.
+				
+				for i=0, i<POPULATION_SIZE, i+=1: {
+					mutation = (population{i} get-mutation).
+                
+					buffer = "Biped $i: Mutation = $mutation".
+					print buffer.
+				}
+            
+#				if current-generation == MAX_GENERATIONS: {
+#					self sleep for-seconds 5.0.     
+#					self end-simulation.
+#					return.
+#				}
+			}
+		}
+		
+		self write.
+#		self end-simulation.
+		
+		current-biped = population{current-biped-num}.
+		body restart-biped with current-biped at
+			(TORSO_POS_X*SCALE_FACTOR, TORSO_POS_Y*SCALE_FACTOR, TORSO_POS_Z*SCALE_FACTOR).
+      
+		sim-start-time = (self get-time).
+		
+		next-eval-time = (sim-start-time + START_PAUSE + CYCLE_TIME).
+		self schedule method-call "eval-progress" at-time next-eval-time.
+
+	+ to breed-new-bipeds:
+		i (int).
+#		j, selected (int).
+#		popFraction, ip, first (int).
+		value (float).
+#		r-value (float).
+		targetBiped (object).
+		sourceBiped (object).
+		total-fitness (float).
+		new-population (list).
+        
+		print "breeding bipeds...".
+		
+#		popFraction = (POPULATION_SIZE/4).
+		
+#		total-fitness = 0.
+#		for i=0, i<POPULATION_SIZE, i+=1: {
+#			total-fitness += (population{i} get-fitness)^2.
+#		}
+        
+		new-population = POPULATION_SIZE new Bipeds.
+			
+		sourceBiped = temp-best-biped.
+
+		for i=0, i<POPULATION_SIZE, i+=1: {
+#			r-value = random[1.0]*total-fitness.
+#		
+#			j = 0.
+#			selected = 0.
+#			while ((j < POPULATION_SIZE) && (selected == 0)): {
+#				sourceBiped = population{j}.
+#				value += (sourceBiped get-fitness).
+#
+#				if (value > r-value): selected = 1.
+#				
+#				j++.
+#			}
+		
+			value = i.
+#			value = (value/POPULATION_SIZE)^3.
+			value = (value/POPULATION_SIZE).
+		
+			targetBiped = new-population{i}.
+			targetBiped set-numGenes as numGenes.
+			targetBiped copy-data from sourceBiped.
+			targetBiped set-birth-generation as current-generation.
+			targetBiped mutate with-chance value with-strength (value*MAX_MUTATION_VAL).
+			targetBiped set-fitness to-value (sourceBiped get-fitness).
+		}
+
+		free population.
+		population = new-population.
+
+	+ to compare-fitness of a (object) with b (object):
+		result (float).
+
+		result = (b get-fitness) - (a get-fitness).
+		return result.
+        
+	+ to iterate:
+		cOM (vector).
+		uCOM (vector).
+		gCOM (vector).
+		message (string).
+		current-time (float).
+		trans-time (float).
+        
+		super iterate.
+       
+#		cOM = bodies{TESTS_PER_ROUND - 1} get-center-of-mass.
+		cOM = body get-center-of-mass.
+        
+		self set-camera-target to cOM.
+        
+		uCOM = cOM.
+		gCOM = cOM.
+		uCOM::y = 30.0.
+		gCOM::y = 0.0.
+        
+		drawing clear.
+        
+		drawing set-line-width to 3.0.
+        
+		drawing set-color to (1, 0, 0).
+		drawing draw-line from uCOM to gCOM.
+        
+		drawing set-color to (0, 0, 0).
+		drawing set-line-width to 1.0.
+        
+		current-time = (self get-time).
+		trans-time = current-time - sim-start-time - START_PAUSE.
+		if trans-time < 0: trans-time = 0.
+        
+		message = "Simulation time: $trans-time. Fitness $test-fitness".
+		self set-display-text to message at-x -.95 at-y -.95.
+ 
+	+ to destroy:
+		super destroy.
+}
+
+MultiBody : BipedBody (aka BipedBodies) {
+	+ variables:
+    
+		#support
+    
+		unbroken (int).
+		supports (list).
+		supLinks (list).
+		supJoints (list).
+		supOff (vector).
+        
+        #body parts
+        
+        bodyParts (list).
+        head, torso (object).
+        leftTorsoExt, rightTorsoExt (object).
+        leftShoulder, rightShoulder (object).
+        leftUpperArm, rightUpperArm (object).
+        leftLowerArm, rightLowerArm (object).
+        leftHip, rightHip (object).
+        leftThigh, rightThigh (object).
+        leftShank, rightShank (object).
+        leftFoot, rightFoot (object).
+        
+        #links
+        
+        bodyLinks (list).
+        headLink, torsoLink (object).
+        lELink, rELink (object).
+        lSLink, rSLink (object).
+        lUALink, rUALink (object).
+        lLALink, rLALink (object).
+        lHLink, rHLink (object).
+        lTLink, rTLink (object).
+        lShLink, rShLink (object).
+        lFLink, rFLink (object).
+        
+        #joints
+		
+        worldJoint (object).
+		
+        bodyJoints (list).
+        headJoint (object).
+        lEJoint, rEJoint (object).
+        lSJoint, rSJoint (object).
+        lUAJoint, rUAJoint (object).
+        lLAJoint, rLAJoint (object).
+        lHJoint, rHJoint (object).
+        lTJoint, rTJoint (object).
+        lShJoint, rShJoint (object).
+        lFJoint, rFJoint (object).
+        
+        #oscillators
+        
+        bodyOscs (list).
+        lS1Osc, rS1Osc (object).
+        lS2Osc, rS2Osc (object).
+        lUAOsc, rUAOsc (object).
+        lLAOsc, rLAOsc (object).
+        lHOsc, rHOsc (object).
+        lT1Osc, rT1Osc (object).
+        lT2Osc, rT2Osc (object).
+        lShOsc, rShOsc (object).
+        lF1Osc, rF1Osc (object).
+        lF2Osc, rF2Osc (object).
+        
+        #feedbacks
+        
+        lImpulse (object).
+        rImpulse (object).
+		
+        feedbacks (list).
+		
+		identity (matrix).
+        
+        #other
+		
+        biped (object).
+        iCOM (vector).
+		first-run (int).
+		continue-walking (int).
+		feedbackCount (int).
+	
+		#time
+	
+        sim-start-time (float).	
+        next-sim-time (float).	
+        
+	+ to modify-range at biped-value (int) from min (float) to max (float):
+#		print biped-value.
+	
+        return min + ((biped get-value at biped-value)*(max - min)).
+		
+	+ to restart-biped with a-biped (object) at position (vector):
+        i, j (int).
+        tv, tu, beta, iw (float).
+		joint, link (object).
+		oscOffset (int).
+		feedback-pos-flexor (int).
+		feedback-pos-extensor (int).
+    
+        biped = a-biped.
+		continue-walking = 1.
+        
+        #set CPG constants and weights
+		
+#		supOff::x = (self modify-range at 0 from 0 to SUPPORT_OFFSET_X).
+#		supOff::y = (self modify-range at 1 from 0 to SUPPORT_OFFSET_Y).
+#		supOff::z = (self modify-range at 2 from 0 to SUPPORT_OFFSET_Z).
+
+		supOff::x = SUPPORT_OFFSET_X*SCALE_FACTOR.
+		supOff::y = SUPPORT_OFFSET_Y*SCALE_FACTOR.
+		supOff::z = SUPPORT_OFFSET_Z*SCALE_FACTOR.
+     	 
+        # Set body position.
+        torsoLink move to position.
+	
+		foreach link in bodyLinks:
+			link set-rotation-matrix to identity.
+
+		if (!first-run): {
+			# Unlink all previous joints.
+			
+			foreach joint in supJoints:
+				joint break-joint.
+
+			worldJoint break-joint.
+	
+			foreach joint in bodyJoints:
+				joint break-joint.
+		}
+		
+		unbroken = 1.
+	        
+		supJoints{0} link parent torsoLink to-child supLinks{0}
+			with-parent-point (supOff::x, -supOff::y, supOff::z) with-child-point (0, 0, 0).
+        
+		supJoints{1} link parent torsoLink to-child supLinks{1}
+			with-parent-point (-supOff::x, -supOff::y, supOff::z) with-child-point (0, 0, 0).
+        
+		supJoints{2} link parent torsoLink to-child supLinks{2}
+			with-parent-point (supOff::x, -supOff::y, -supOff::z) with-child-point (0, 0, 0).
+      
+		supJoints{3} link parent torsoLink to-child supLinks{3}
+			with-parent-point (-supOff::x, -supOff::y, -supOff::z) with-child-point (0, 0, 0).
+		
+        headJoint link parent torsoLink to-child headLink
+            with-parent-point (0,
+                (TORSO_BOX_HEIGHT*SCALE_FACTOR / 2.0) +
+                NECK_HEIGHT*SCALE_FACTOR +
+                (HEAD_RADIUS*SCALE_FACTOR / 2.0),
+                NECK_OFFSET*SCALE_FACTOR)
+            with-child-point (0, 0, 0).
+
+        lEJoint link parent torsoLink to-child lELink
+            with-parent-point ((TORSO_BOX_LENGTH*SCALE_FACTOR / 2.0) +
+                (TORSO_EXT_LENGTH*SCALE_FACTOR / 2.0) +
+                (SHOULDER_LENGTH*SCALE_FACTOR / 2.0),
+                (TORSO_BOX_HEIGHT*SCALE_FACTOR / 2.0) -
+                (SHOULDER_HEIGHT*SCALE_FACTOR / 2.0) -
+                (TORSO_EXT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, 0, 0).
+
+        rEJoint link parent torsoLink to-child rELink
+            with-parent-point (-(TORSO_BOX_LENGTH*SCALE_FACTOR / 2.0) -
+                (TORSO_EXT_LENGTH*SCALE_FACTOR / 2.0) -
+                (SHOULDER_LENGTH*SCALE_FACTOR / 2.0),
+                (TORSO_BOX_HEIGHT*SCALE_FACTOR / 2.0) -
+                (SHOULDER_HEIGHT*SCALE_FACTOR / 2.0) -
+                (TORSO_EXT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, 0, 0).
+           
+        lSJoint link parent lELink to-child lSLink
+            with-parent-point (0, (TORSO_EXT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, 0, 0)
+            with-normal (0, 0, 1).
+           
+        rSJoint link parent rELink to-child rSLink
+            with-parent-point (0, (TORSO_EXT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, 0, 0)
+            with-normal (0, 0, 1).
+          
+        lUAJoint link parent lSLink to-child lUALink
+            with-parent-point (0, -(SHOULDER_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (UPPER_ARM_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 1, 0).
+           
+        rUAJoint link parent rSLink to-child rUALink
+            with-parent-point (0, -(SHOULDER_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (UPPER_ARM_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 1, 0).
+          
+        lLAJoint link parent lUALink to-child lLALink
+            with-parent-point (0, -(UPPER_ARM_HEIGHT*SCALE_FACTOR / 2.0) -
+                ELBOW_RADIUS*SCALE_FACTOR, 0)
+            with-child-point (0, (LOWER_ARM_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (1, 0, 0).
+           
+        rLAJoint link parent rUALink to-child rLALink
+            with-parent-point (0, -(UPPER_ARM_HEIGHT*SCALE_FACTOR / 2.0) -
+                ELBOW_RADIUS*SCALE_FACTOR, 0)
+            with-child-point (0, (LOWER_ARM_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (1, 0, 0).
+          
+        lHJoint link parent torsoLink to-child lHLink
+            with-parent-point ((TORSO_BOX_LENGTH*SCALE_FACTOR / 4.0) +
+                HIP_OFFSET*SCALE_FACTOR,
+                -(TORSO_BOX_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (HIP_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 1, 0).
+           
+        rHJoint link parent torsoLink to-child rHLink
+            with-parent-point (-(TORSO_BOX_LENGTH*SCALE_FACTOR / 4.0) -
+                HIP_OFFSET*SCALE_FACTOR,
+                -(TORSO_BOX_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (HIP_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 1, 0).
+           
+        lTJoint link parent lHLink to-child lTLink
+            with-parent-point (0, -(HIP_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (THIGH_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 0, 1).
+           
+        rTJoint link parent rHLink to-child rTLink
+            with-parent-point (0, -(HIP_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (THIGH_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 0, 1).
+          
+        lShJoint link parent lTLink to-child lShLink
+            with-parent-point (0,
+                -(THIGH_HEIGHT*SCALE_FACTOR / 2.0) -
+                (KNEE_RADIUS*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (SHANK_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (1, 0, 0).
+           
+        rShJoint link parent rTLink to-child rShLink
+            with-parent-point (0,
+                -(THIGH_HEIGHT*SCALE_FACTOR / 2.0) -
+                (KNEE_RADIUS*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (SHANK_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (1, 0, 0).
+           
+        lFJoint link parent lShLink to-child lFLink
+            with-parent-point (0,
+                -(SHANK_HEIGHT*SCALE_FACTOR / 2.0) -
+                (HEEL_RADIUS*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (FOOT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 0, 1).
+           
+        rFJoint link parent rShLink to-child rFLink
+            with-parent-point (0,
+                -(SHANK_HEIGHT*SCALE_FACTOR / 2.0) -
+                (HEEL_RADIUS*SCALE_FACTOR / 2.0), 0)
+            with-child-point (0, (FOOT_HEIGHT*SCALE_FACTOR / 2.0), 0)
+            with-normal (0, 0, 1).
+		
+		for i=1, i<17, i++: {
+			bodyJoints{i} set-strength-limit to JOINT_STR_LIMIT.
+#			bodyJoints{i} set-joint-damping to JOINT_DAMPING.	
+		}
+		
+		lSJoint set-joint-limits a1-min LS_JOINT_MIN_1 a1-max LS_JOINT_MAX_1 a2-min LS_JOINT_MIN_2 a2-max LS_JOINT_MAX_2.
+		rSJoint set-joint-limits a1-min RS_JOINT_MIN_1 a1-max RS_JOINT_MAX_1 a2-min RS_JOINT_MIN_2 a2-max RS_JOINT_MAX_2.
+		lUAJoint set-joint-limits min LUA_JOINT_MIN max LUA_JOINT_MAX.
+		rUAJoint set-joint-limits min RUA_JOINT_MIN max RUA_JOINT_MAX.
+		lLAJoint set-joint-limits min LLA_JOINT_MIN max LLA_JOINT_MAX.
+		rLAJoint set-joint-limits min RLA_JOINT_MIN max RLA_JOINT_MAX.
+		lHJoint set-joint-limits min LH_JOINT_MIN max LH_JOINT_MAX.
+		rHJoint set-joint-limits min RH_JOINT_MIN max RH_JOINT_MAX.
+		lTJoint set-joint-limits a1-min LT_JOINT_MIN_1 a1-max LT_JOINT_MAX_1 a2-min LT_JOINT_MIN_2 a2-max LT_JOINT_MAX_2.
+		rTJoint set-joint-limits a1-min RT_JOINT_MIN_1 a1-max RT_JOINT_MAX_1 a2-min RT_JOINT_MIN_2 a2-max RT_JOINT_MAX_2.
+		lShJoint set-joint-limits min LSH_JOINT_MIN max LSH_JOINT_MAX.
+		rShJoint set-joint-limits min RSH_JOINT_MIN max RSH_JOINT_MAX.
+		lFJoint set-joint-limits a1-min LF_JOINT_MIN_1 a1-max LF_JOINT_MAX_1 a2-min LF_JOINT_MIN_2 a2-max LF_JOINT_MAX_2.
+		rFJoint set-joint-limits a1-min RF_JOINT_MIN_1 a1-max RF_JOINT_MAX_1 a2-min RF_JOINT_MIN_2 a2-max RF_JOINT_MAX_2.
+		
+        tv = (self modify-range at 0 from TU_MIN to TU_MAX).
+        tu = (self modify-range at 1 from TV_MIN to TV_MAX).
+        beta = (self modify-range at 2 from BETA_MIN to BETA_MAX).
+        iw = (self modify-range at 3 from IW_MIN to IW_MAX).
+		
+        for i=0, i < NUM_JOINTS, i++: {
+			oscOffset = (feedbackCount*2 + 1)*(i/2) + 4.
+	
+            bodyOscs{i} reset.
+
+            bodyOscs{i} set-tv as tv.
+            bodyOscs{i} set-tu as tu.
+            bodyOscs{i} set-beta as beta.
+			
+            bodyOscs{i} insert-y-flexor input (bodyOscs{i} get-extensor) at 0.
+            bodyOscs{i} insert-y-extensor input (bodyOscs{i} get-flexor) at 0.
+            bodyOscs{i} insert-wy-flexor weight iw at 0.
+            bodyOscs{i} insert-wy-extensor weight iw at 0.
+
+            bodyOscs{i} set-u0 as (self modify-range at oscOffset from U0_MIN to U0_MAX).
+                
+#			for j=0, j < FEEDBACKS_PER_JOINT, j+=1: {
+#				
+#				feedback-pos-flexor = (self modify-range at (oscOffset + 1) from 0 to feedbackCount).
+#				feedback-pos-extensor = (self modify-range at (oscOffset + 2) from 0 to feedbackCount).
+#			
+#				if (i % 2) == 1: {
+#					feedback-pos-flexor += 1 - (feedback-pos-flexor % 2)*2.
+#					feedback-pos-extensor += 1 - (feedback-pos-extensor % 2)*2.
+#				}
+#			
+#				bodyOscs{i} insert-f-flexor feedback feedbacks{feedback-pos-flexor} at j.
+#				bodyOscs{i} insert-f-extensor feedback feedbacks{feedback-pos-extensor} at j.   
+#		
+#				bodyOscs{i} insert-wf-flexor weight (self modify-range at (oscOffset + 3) from W_MIN to W_MAX) at j.
+#				bodyOscs{i} insert-wf-extensor weight (self modify-range at (oscOffset + 4) from W_MIN to W_MAX) at j.
+#		
+#				oscOffset += 4.		
+#			}
+                
+			for j=0, j < feedbackCount, j+=1: {
+				
+				feedback-pos-flexor = j.
+				feedback-pos-extensor = j.
+			
+				if (i % 2) == 1: {
+					feedback-pos-flexor += 1 - (feedback-pos-flexor % 2)*2.
+					feedback-pos-extensor += 1 - (feedback-pos-extensor % 2)*2.
+				}
+			
+				bodyOscs{i} insert-f-flexor feedback feedbacks{feedback-pos-flexor} at j.
+				bodyOscs{i} insert-f-extensor feedback feedbacks{feedback-pos-extensor} at j.   
+		
+				bodyOscs{i} insert-wf-flexor weight (self modify-range at (oscOffset + 1) from W_MIN to W_MAX) at j.
+				bodyOscs{i} insert-wf-extensor weight (self modify-range at (oscOffset + 2) from W_MIN to W_MAX) at j.
+		
+				oscOffset += 2.		
+			}
+        }
+        
+        # Schedule movement events.
+        
+        sim-start-time = (controller get-time).
+		
+		next-sim-time = (sim-start-time + START_PAUSE).
+		self schedule method-call "set-initials" at-time next-sim-time.
+		
+		next-sim-time += CYCLE_TIME.
+        self schedule method-call "set-next-velocities" at-time next-sim-time.
+	
+		if first-run: {
+			first-run = 0.
+		}
+		
+    + to get-biped:
+        return biped.
+
+    + to init:
+        i (int).
+		
+		feedbackCount = FEEDBACK_COUNT.
+		
+		first-run = 1.
+			
+		identity = [(1, 0, 0), (0, 1, 0), (0, 0, 1)].
+        
+		# Create supports.
+
+		for i=0, i < 4, i++: {
+			supports{i} = (new Sphere init-with radius SUPPORT_RADIUS).
+			supports{i} set-mass to SUPPORT_BOX_MASS.
+
+			supLinks{i} = new Link.
+			supLinks{i} set-shape to supports{i}.
+			supLinks{i} set-color to (1.0, 0.0, 0.0).
+		}
+
+		# Set supports.
+
+		supJoints{0} = new FixedJoint.
+		supJoints{1} = new FixedJoint.
+		supJoints{2} = new FixedJoint.
+		supJoints{3} = new FixedJoint.
+        
+        # Create body.
+        
+        bodyParts{0} = head = (new Sphere init-with radius HEAD_RADIUS*SCALE_FACTOR).
+        bodyParts{1} = torso = (new Cube init-with size (TORSO_BOX_LENGTH*SCALE_FACTOR, TORSO_BOX_HEIGHT*SCALE_FACTOR, TORSO_BOX_WIDTH*SCALE_FACTOR)).
+        bodyParts{2} = leftTorsoExt = (new Cube init-with size (TORSO_EXT_LENGTH*SCALE_FACTOR, TORSO_EXT_HEIGHT*SCALE_FACTOR, TORSO_EXT_WIDTH*SCALE_FACTOR)).
+        bodyParts{3} = rightTorsoExt = (new Cube init-with size (TORSO_EXT_LENGTH*SCALE_FACTOR, TORSO_EXT_HEIGHT*SCALE_FACTOR, TORSO_EXT_WIDTH*SCALE_FACTOR)).
+        bodyParts{4} = leftShoulder = (new Cube init-with size (SHOULDER_LENGTH*SCALE_FACTOR, SHOULDER_HEIGHT*SCALE_FACTOR, SHOULDER_WIDTH*SCALE_FACTOR)).
+        bodyParts{5} = rightShoulder = (new Cube init-with size (SHOULDER_LENGTH*SCALE_FACTOR, SHOULDER_HEIGHT*SCALE_FACTOR, SHOULDER_WIDTH*SCALE_FACTOR)).
+        bodyParts{6} = leftUpperArm = (new Cube init-with size (UPPER_ARM_LENGTH*SCALE_FACTOR, UPPER_ARM_HEIGHT*SCALE_FACTOR, UPPER_ARM_WIDTH*SCALE_FACTOR)).
+        bodyParts{7} = rightUpperArm = (new Cube init-with size (UPPER_ARM_LENGTH*SCALE_FACTOR, UPPER_ARM_HEIGHT*SCALE_FACTOR, UPPER_ARM_WIDTH*SCALE_FACTOR)).
+        bodyParts{8} = leftLowerArm = (new Cube init-with size (LOWER_ARM_LENGTH*SCALE_FACTOR, LOWER_ARM_HEIGHT*SCALE_FACTOR, LOWER_ARM_WIDTH*SCALE_FACTOR)).
+        bodyParts{9} = rightLowerArm = (new Cube init-with size (LOWER_ARM_LENGTH*SCALE_FACTOR, LOWER_ARM_HEIGHT*SCALE_FACTOR, LOWER_ARM_WIDTH*SCALE_FACTOR)).
+        bodyParts{10} = leftHip = (new Cube init-with size (HIP_LENGTH*SCALE_FACTOR, HIP_HEIGHT*SCALE_FACTOR, HIP_WIDTH*SCALE_FACTOR)).
+        bodyParts{11} = rightHip = (new Cube init-with size (HIP_LENGTH*SCALE_FACTOR, HIP_HEIGHT*SCALE_FACTOR, HIP_WIDTH*SCALE_FACTOR)).
+        bodyParts{12} = leftThigh = (new Cube init-with size (THIGH_LENGTH*SCALE_FACTOR, THIGH_HEIGHT*SCALE_FACTOR, THIGH_WIDTH*SCALE_FACTOR)).
+        bodyParts{13} = rightThigh = (new Cube init-with size (THIGH_LENGTH*SCALE_FACTOR, THIGH_HEIGHT*SCALE_FACTOR, THIGH_WIDTH*SCALE_FACTOR)).
+        bodyParts{14} = leftShank = (new Cube init-with size (SHANK_LENGTH*SCALE_FACTOR, SHANK_VISUAL_HEIGHT*SCALE_FACTOR, SHANK_WIDTH*SCALE_FACTOR)).
+        bodyParts{15} = rightShank = (new Cube init-with size (SHANK_LENGTH*SCALE_FACTOR, SHANK_VISUAL_HEIGHT*SCALE_FACTOR, SHANK_WIDTH*SCALE_FACTOR)).
+        bodyParts{16} = leftFoot = (new Cube init-with size (FOOT_LENGTH*SCALE_FACTOR, FOOT_HEIGHT*SCALE_FACTOR, FOOT_WIDTH*SCALE_FACTOR)).
+        bodyParts{17} = rightFoot = (new Cube init-with size (FOOT_LENGTH*SCALE_FACTOR, FOOT_HEIGHT*SCALE_FACTOR, FOOT_WIDTH*SCALE_FACTOR)).
+        
+        head set-mass to HEAD_MASS*SCALE_FACTOR.
+        torso set-mass to TORSO_BOX_MASS*SCALE_FACTOR.
+        leftTorsoExt set-mass to TORSO_EXT_MASS*SCALE_FACTOR.
+        rightTorsoExt set-mass to TORSO_EXT_MASS*SCALE_FACTOR.
+        leftShoulder set-mass to SHOULDER_MASS*SCALE_FACTOR.
+        rightShoulder set-mass to SHOULDER_MASS*SCALE_FACTOR.
+        leftUpperArm set-mass to UPPER_ARM_MASS*SCALE_FACTOR.
+        rightUpperArm set-mass to UPPER_ARM_MASS*SCALE_FACTOR.
+        leftLowerArm set-mass to LOWER_ARM_MASS*SCALE_FACTOR.
+        rightLowerArm set-mass to LOWER_ARM_MASS*SCALE_FACTOR.
+        leftHip set-mass to HIP_MASS*SCALE_FACTOR.
+        rightHip set-mass to HIP_MASS*SCALE_FACTOR.
+        leftThigh set-mass to THIGH_MASS*SCALE_FACTOR.
+        rightThigh set-mass to THIGH_MASS*SCALE_FACTOR.
+        leftShank set-mass to SHANK_MASS*SCALE_FACTOR.
+        rightShank set-mass to SHANK_MASS*SCALE_FACTOR.
+        leftFoot set-mass to FOOT_MASS*SCALE_FACTOR.
+        rightFoot set-mass to FOOT_MASS*SCALE_FACTOR.
+        
+        bodyLinks{0} = headLink = new Link.
+        bodyLinks{1} = torsoLink = new Link.
+        bodyLinks{2} = lELink = new Link.
+        bodyLinks{3} = rELink = new Link.
+        bodyLinks{4} = lSLink = new Link.
+        bodyLinks{5} = rSLink = new Link.
+        bodyLinks{6} = lUALink = new Link.
+        bodyLinks{7} = rUALink = new Link.
+        bodyLinks{8} = lLALink = new Link.
+        bodyLinks{9} = rLALink = new Link.
+        bodyLinks{10} = lHLink = new Link.
+        bodyLinks{11} = rHLink = new Link.
+        bodyLinks{12} = lTLink = new Link.
+        bodyLinks{13} = rTLink = new Link.
+        bodyLinks{14} = lShLink = new Link.
+        bodyLinks{15} = rShLink = new Link.
+        bodyLinks{16} = lFLink = new Link.
+        bodyLinks{17} = rFLink = new Link.
+
+        headLink set-shape to head.
+        torsoLink set-shape to torso.
+        lELink set-shape to leftTorsoExt.
+        rELink set-shape to rightTorsoExt.
+        lSLink set-shape to leftShoulder.
+        rSLink set-shape to rightShoulder.
+        lUALink set-shape to leftUpperArm.
+        rUALink set-shape to rightUpperArm.
+        lLALink set-shape to leftUpperArm.
+        rLALink set-shape to rightUpperArm.
+        lHLink set-shape to leftHip.
+        rHLink set-shape to rightHip.
+        lTLink set-shape to leftThigh.
+        rTLink set-shape to rightThigh.
+        lShLink set-shape to leftShank.
+        rShLink set-shape to rightShank.
+        lFLink set-shape to leftFoot.
+        rFLink set-shape to rightFoot.
+ 
+        self set-root to torsoLink.
+	
+        headLink set-color to (.8, .8, .8).
+        torsoLink set-color to (.8, 0, 0).
+        lELink set-color to (.8, 0, 0).
+        rELink set-color to (.8, 0, 0).
+        lSLink set-color to (.8, .8, 0).
+        rSLink set-color to (.8, .8, 0).
+        lUALink set-color to (.8, 0, .8).
+        rUALink set-color to (.8, 0, .8).
+        lLALink set-color to (0, .8, .8).
+        rLALink set-color to (0, .8, .8).
+        lHLink set-color to (.8, .8, .8).
+        rHLink set-color to (.8, .8, .8).
+        lTLink set-color to (0, .8, 0).
+        rTLink set-color to (0, .8, 0).
+        lShLink set-color to (0, 0, .8).
+        rShLink set-color to (0, 0, .8).
+        lFLink set-color to (0, 0, 0).
+        rFLink set-color to (0, 0, 0).
+        
+        # Set links' physics.
+        
+        for i=0, i < 18, i++: {
+            bodyLinks{i} set-transparency to BODY_TRANSPARENCY.
+            bodyLinks{i} set-e to BODY_E.
+            bodyLinks{i} set-eT to BODY_ET.
+            bodyLinks{i} set-mu to BODY_MU.
+        }
+		
+		worldJoint  = new FixedJoint.
+        
+        # Set body joints.
+
+        bodyJoints{0} = headJoint = new FixedJoint.
+        bodyJoints{1} = lEJoint = new FixedJoint.
+        bodyJoints{2} = rEJoint = new FixedJoint.
+        bodyJoints{3} = lSJoint = new UniversalJoint.
+        bodyJoints{4} = rSJoint = new UniversalJoint.
+        bodyJoints{5} = lUAJoint = new RevoluteJoint.
+        bodyJoints{6} = rUAJoint = new RevoluteJoint.
+        bodyJoints{7} = lLAJoint = new RevoluteJoint.
+        bodyJoints{8} = rLAJoint = new RevoluteJoint.
+        bodyJoints{9} = lHJoint = new RevoluteJoint.
+        bodyJoints{10} = rHJoint = new RevoluteJoint.
+        bodyJoints{11} = lTJoint = new UniversalJoint.
+        bodyJoints{12} = rTJoint = new UniversalJoint.
+        bodyJoints{13} = lShJoint = new RevoluteJoint.
+        bodyJoints{14} = rShJoint = new RevoluteJoint.
+        bodyJoints{15} = lFJoint = new UniversalJoint.
+        bodyJoints{16} = rFJoint = new UniversalJoint.
+		
+        # Set CPG oscillators.
+        
+        bodyOscs{0} = lS1Osc = new Oscillator.
+        bodyOscs{1} = rS1Osc = new Oscillator.
+        bodyOscs{2} = lS2Osc = new Oscillator.
+        bodyOscs{3} = rS2Osc = new Oscillator.
+        bodyOscs{4} = lUAOsc = new Oscillator.
+        bodyOscs{5} = rUAOsc = new Oscillator.
+        bodyOscs{6} = lLAOsc = new Oscillator.
+        bodyOscs{7} = rLAOsc = new Oscillator.
+        bodyOscs{8} = lHOsc = new Oscillator.
+        bodyOscs{9} = rHOsc = new Oscillator.
+        bodyOscs{10} = lT1Osc = new Oscillator.
+        bodyOscs{11} = rT1Osc = new Oscillator.
+        bodyOscs{12} = lT2Osc = new Oscillator.
+        bodyOscs{13} = rT2Osc = new Oscillator.
+        bodyOscs{14} = lShOsc = new Oscillator.
+        bodyOscs{15} = rShOsc = new Oscillator.
+        bodyOscs{16} = lF1Osc = new Oscillator.
+        bodyOscs{17} = rF1Osc = new Oscillator.
+        bodyOscs{18} = lF2Osc = new Oscillator.
+        bodyOscs{19} = rF2Osc = new Oscillator.
+	
+        feedbacks{0} = lImpulse = new ValueHolder.
+        feedbacks{1} = rImpulse = new ValueHolder.
+		
+        for i=2, i < feedbackCount, i++: {
+			feedbacks{i} = new ValueHolder.
+		}
+
+        return self.
+        
+    + to get-center-of-mass:
+        return (SCALE_FACTOR * ((HEAD_MASS * (headLink get-location)) +
+            (TORSO_BOX_MASS * (torsoLink get-location)) +
+            (SHOULDER_MASS * (lSLink get-location)) +
+            (SHOULDER_MASS * (rSLink get-location)) +
+            (UPPER_ARM_MASS * (lUALink get-location)) +
+            (UPPER_ARM_MASS * (rUALink get-location)) +
+            (LOWER_ARM_MASS * (lLALink get-location)) +
+            (LOWER_ARM_MASS * (rLALink get-location)) +
+            (HIP_MASS * (lHLink get-location)) +
+            (HIP_MASS * (rHLink get-location)) +
+            (THIGH_MASS * (lTLink get-location)) +
+            (THIGH_MASS * (rTLink get-location)) +
+            (SHANK_MASS * (lShLink get-location)) +
+            (SHANK_MASS * (rShLink get-location)) +
+            (FOOT_MASS * (lFLink get-location)) +
+            (FOOT_MASS * (rFLink get-location)))) /
+            (SCALE_FACTOR * (HEAD_MASS + TORSO_BOX_MASS +
+            SHOULDER_MASS + SHOULDER_MASS +
+            UPPER_ARM_MASS + UPPER_ARM_MASS +
+            LOWER_ARM_MASS + LOWER_ARM_MASS +
+            HIP_MASS + HIP_MASS +
+            THIGH_MASS + THIGH_MASS +
+            SHANK_MASS + SHANK_MASS +
+            FOOT_MASS + FOOT_MASS)).
+            
+#	+ to get-position-support at pos (int):
+#		return (supLinks{pos} get-location).
+            
+    + to get-position-head:
+        return (headLink get-location).
+        
+    + to get-position-torso:
+        return (torsoLink get-location).
+        
+    + to get-position-lShoulder:
+        return (lSLink get-location).
+            
+    + to get-position-rShoulder:
+        return (rSLink get-location).
+            
+    + to get-position-lUpperArm:
+        return (lUALink get-location).
+            
+    + to get-position-rUpperArm:
+        return (rUALink get-location).
+      
+    + to get-position-lLowerArm:
+        return (lLALink get-location).
+         
+    + to get-position-rLowerArm:
+        return (rLALink get-location).
+         
+    + to get-position-lHip:
+        return (lHLink get-location).
+        
+    + to get-position-rHip:
+        return (rHLink get-location).
+         
+    + to get-position-lThigh:
+        return (lTLink get-location).
+        
+    + to get-position-rThigh:
+        return (rTLink get-location).
+        
+    + to get-position-lShank:
+        return (lShLink get-location).
+         
+    + to get-position-rShank:
+        return (rShLink get-location).
+       
+    + to get-position-lFoot:
+        return (lFLink get-location).
+        
+    + to get-position-rFoot:
+        return (rFLink get-location).
+       
+    + to get-bound-minimum-lFoot:
+        return (lFLink get-bound-minimum).
+        
+    + to get-bound-minimum-rFoot:
+        return (rFLink get-bound-minimum).
+       
+    + to get-bound-maximum-lFoot:
+        return (lFLink get-bound-maximum).
+        
+    + to get-bound-maximum-rFoot:
+        return (rFLink get-bound-maximum).
+        
+    + to set-initials:
+        iCOM = self get-center-of-mass.
+		
+	+ to calculate-joint-velocity at joint (int) with current-angle (float):
+        oscOutput (float).
+        result (float).
+    
+        oscOutput = (bodyOscs{joint} get-output) + random[MAX_NOISE*2] - MAX_NOISE.
+		
+		if (oscOutput > 1.0): {
+			oscOutput = 1.0.
+		}
+		else if (oscOutput < -1.0): {
+			oscOutput = -1.0.
+		}
+	
+#		print joint, oscOutput.
+     
+		result = PROPORTIONAL_GAIN * ((oscOutput * MATH_PI) - current-angle).
+        
+        return result.
+	
+	+ to stop-walking:
+		continue-walking = 0.
+		
+	+ to get-inputs:
+		i (int).
+		i-mod (int).
+		floor-pos (vector).
+		torso-rot (matrix).
+		inv-torso-rot (matrix).
+		inputs (list).
+		
+		positions (list).
+#        head-pos (vector).
+		torso-pos (vector).
+        lS-pos (vector).
+        rS-pos (vector).
+        lUA-pos (vector).
+        rUA-pos (vector).
+        lLA-pos (vector).
+        rLA-pos (vector).
+        lH-pos (vector).
+        rH-pos (vector).
+        lT-pos (vector).
+        rT-pos (vector).
+        lSh-pos (vector).
+        rSh-pos (vector).
+        lF-pos (vector).
+        rF-pos (vector).
+		
+		torso-pos = (torsoLink get-location).
+		floor-pos = torso-pos.
+		floor-pos::y = 0.
+		
+		torso-rot = (torsoLink get-rotation-matrix).
+		inv-torso-rot = 1/torso-rot.
+		floor-pos = inv-torso-rot*(floor-pos - torso-pos).
+		
+#		positions{0} = head-pos = inv-torso-rot*((headLink get-location) - torso-pos) - floor-pos.
+		positions{0} = torso-pos = inv-torso-rot*((torsoLink get-location) - torso-pos) - floor-pos.
+		positions{1} = torso-pos.
+		positions{2} = lS-pos = inv-torso-rot*((lSLink get-location) - torso-pos) - floor-pos.
+		positions{3} = rS-pos = inv-torso-rot*((rSLink get-location) - torso-pos) - floor-pos.
+		positions{4} = lUA-pos = inv-torso-rot*((lUALink get-location) - torso-pos) - floor-pos.
+		positions{5} = rUA-pos = inv-torso-rot*((rUALink get-location) - torso-pos) - floor-pos.
+		positions{6} = lLA-pos = inv-torso-rot*((lLALink get-location) - torso-pos) - floor-pos.
+		positions{7} = rLA-pos = inv-torso-rot*((rLALink get-location) - torso-pos) - floor-pos.
+		positions{8} = lH-pos = inv-torso-rot*((lHLink get-location) - torso-pos) - floor-pos.
+		positions{9} = rH-pos = inv-torso-rot*((rHLink get-location) - torso-pos) - floor-pos.
+		positions{10} = lT-pos = inv-torso-rot*((lTLink get-location) - torso-pos) - floor-pos.
+		positions{11} = rT-pos = inv-torso-rot*((rTLink get-location) - torso-pos) - floor-pos.
+		positions{12} = lSh-pos = inv-torso-rot*((lShLink get-location) - torso-pos) - floor-pos.
+		positions{13} = rSh-pos = inv-torso-rot*((rShLink get-location) - torso-pos) - floor-pos.
+		positions{14} = lF-pos = inv-torso-rot*((lFLink get-location) - torso-pos) - floor-pos.
+		positions{15} = rF-pos = inv-torso-rot*((rFLink get-location) - torso-pos) - floor-pos.
+
+		for i = 0, i < 16, i+=1: {
+			i-mod = (i/2)*6 + i%2.
+		
+			inputs{i-mod} = positions{i}::x/(BOUND_LIMIT*SCALE_FACTOR*2) + 0.5.
+			inputs{i-mod + 2} = positions{i}::y/(BOUND_LIMIT*SCALE_FACTOR*2) + 0.5.
+			inputs{i-mod + 4} = positions{i}::z/(BOUND_LIMIT*SCALE_FACTOR*2) + 0.5.
+			
+			if (inputs{i-mod} > 1.0): inputs{i*3} = 1.0.
+			if (inputs{i-mod + 2} > 1.0): inputs{i*3 + 1} = 1.0.
+			if (inputs{i-mod + 4} > 1.0): inputs{i*3 + 2} = 1.0.
+			
+			if (inputs{i-mod} < 0.0): inputs{i*3} = 0.0.
+			if (inputs{i-mod + 2} < 0.0): inputs{i*3 + 1} = 0.0.
+			if (inputs{i-mod + 4} < 0.0): inputs{i*3 + 2} = 0.0.
+		}
+		
+        for i=2, i < feedbackCount, i++: {
+			feedbacks{i} set-value as inputs{i - 2}.
+		}
+        
+    + to set-next-velocities:
+        i (int).
+		current-angles (list).
+ #		current-velocities (list).
+        velocities (list).
+#		torsoRot (matrix).
+#		sim-time (float).
+		cOM (vector).
+#		rCOM (vector).
+#		torsoPos (vector).
+		joint (object).
+   
+#		sim-time = (controller get-time).
+		
+#		if ((sim-time - sim-start-time) < (START_PAUSE + SIM_TIME)) && continue-walking: {
+		if continue-walking: {
+			
+			if unbroken && ((next-sim-time - sim-start-time) > (START_PAUSE + TIME_TO_DETACH)): {
+				foreach joint in supJoints:
+					joint break-joint.
+					
+#				free supports.
+#				free supLinks.
+#				free supJoints.
+				
+				unbroken = 0.
+			}
+        
+            if (next-sim-time - sim-start-time) < (START_PAUSE + CYCLE_TIME + CYCLE_TIME): {
+                lImpulse set-value as IMPULSE.
+                rImpulse set-value as -IMPULSE.
+            } else {
+                lImpulse set-value as 0.
+                rImpulse set-value as 0.
+            }
+                
+            current-angles{0} = -(lSJoint get-joint-angles)::x.
+            current-angles{1} = (rSJoint get-joint-angles)::x.
+            current-angles{2} = (lSJoint get-joint-angles)::y.
+            current-angles{3} = (rSJoint get-joint-angles)::y.
+            current-angles{4} = -(lUAJoint get-joint-angle).
+            current-angles{5} = (rUAJoint get-joint-angle).
+            current-angles{6} = (lLAJoint get-joint-angle).
+            current-angles{7} = (rLAJoint get-joint-angle).
+            current-angles{8} = -(lHJoint get-joint-angle).
+            current-angles{9} = (rHJoint get-joint-angle).
+            current-angles{10} = -(lTJoint get-joint-angles)::x.
+            current-angles{11} = (rTJoint get-joint-angles)::x.
+            current-angles{12} = (lTJoint get-joint-angles)::y.
+            current-angles{13} = (rTJoint get-joint-angles)::y.
+            current-angles{14} = (lShJoint get-joint-angle).
+            current-angles{15} = (rShJoint get-joint-angle).
+            current-angles{16} = -(lFJoint get-joint-angles)::x.
+            current-angles{17} = (rFJoint get-joint-angles)::x.
+            current-angles{18} = (lFJoint get-joint-angles)::y.
+            current-angles{19} = (rFJoint get-joint-angles)::y.
+ 
+            for i=0, i < NUM_JOINTS, i++: {
+                velocities{i} = (self calculate-joint-velocity at i with current-angles{i}).
+            }
+            
+            lSJoint set-joint-velocity axis-1 -velocities{0} axis-2 velocities{2}.
+            rSJoint set-joint-velocity axis-1 velocities{1} axis-2 velocities{3}.
+                    
+            lUAJoint set-joint-velocity to -velocities{4}.
+            rUAJoint set-joint-velocity to velocities{5}.
+            
+            lLAJoint set-joint-velocity to velocities{6}.
+            rLAJoint set-joint-velocity to velocities{7}.
+            
+            lHJoint set-joint-velocity to -velocities{8}.
+            rHJoint set-joint-velocity to velocities{9}.
+
+            lTJoint set-joint-velocity axis-1 -velocities{10} axis-2 velocities{12}.
+            rTJoint set-joint-velocity axis-1 velocities{11} axis-2 velocities{13}.
+
+            lShJoint set-joint-velocity to velocities{14}.
+            rShJoint set-joint-velocity to velocities{15}.
+
+            lFJoint set-joint-velocity axis-1 -velocities{16} axis-2 velocities{18}.
+            rFJoint set-joint-velocity axis-1 velocities{17} axis-2 velocities{19}.
+       
+			#Modify Oscilators' Deltas:
+            for i=0, i < NUM_JOINTS, i++: {
+                bodyOscs{i} calculate-delta.
+            }
+            
+            #Change Oscilators' States:
+            for i=0, i < NUM_JOINTS, i++: {
+                bodyOscs{i} modify-state.
+            }
+			
+			next-sim-time += CYCLE_TIME.
+			self schedule method-call "set-next-velocities" at-time next-sim-time.
+#			self schedule method-call "set-next-velocities" at-time (sim-time + CYCLE_TIME).
+            
+        } else {
+		
+			worldJoint link parent 0 to-child torsoLink
+				with-parent-point (cOM::x, cOM::y, cOM::z)
+				with-child-point (0, 0, 0).
+
+            lSJoint set-joint-velocity axis-1 0 axis-2 0.
+            rSJoint set-joint-velocity axis-1 0 axis-2 0.
+                    
+            lUAJoint set-joint-velocity to 0.
+            rUAJoint set-joint-velocity to 0.
+        
+            lLAJoint set-joint-velocity to 0.
+            rLAJoint set-joint-velocity to 0.
+        
+            lHJoint set-joint-velocity to 0.
+            rHJoint set-joint-velocity to 0.
+        
+            lTJoint set-joint-velocity axis-1 0 axis-2 0.
+            rTJoint set-joint-velocity axis-1 0 axis-2 0.
+        
+            lShJoint set-joint-velocity to 0.
+            rShJoint set-joint-velocity to 0.
+        
+            lFJoint set-joint-velocity axis-1 0 axis-2 0.
+            rFJoint set-joint-velocity axis-1 0 axis-2 0.
+        }
+ 
+    + to destroy:
+		free worldJoint.
+		free supports.
+		free supLinks.
+		free supJoints.
+        free bodyParts.
+        free bodyLinks.
+        free bodyJoints.
+        free bodyOscs.
+        free lImpulse.
+        free rImpulse.
+		free feedbacks.
+		
+        super destroy.
+}
+
+Object : Biped (aka Bipeds) {
+    + variables:
+        birthGen (int).
+        fitness (float).
+        genome (object).
+		mutation (float).
+        mutatedData (list).
+        mutFilterData (list).
+        numGenes (int).
+	
+    + to init:
+        genome = new BipedGenome.
+        
+    + to set-numGenes as value (int):
+        n (int).
+		
+		numGenes = value.
+		
+        for n=0, n<numGenes, n+=1: {
+            mutFilterData{n} = MAX_VALUE.
+            mutatedData{n} = 0.
+        }
+		
+        genome set-numGenes as value.
+        self randomize.
+ 
+    + to set-birth-generation as generation (int):
+        birthGen = generation.
+ 
+    + to get-birth-generation:
+        return birthGen.
+
+    + to randomize:
+        genome randomize.
+		
+    + to set-data from values (list):
+		genome set-data from values.
+    
+    + to get-genome:
+		return genome.
+	
+	+ to get-mutation:
+		return mutation.
+	
+	+ to reset-mutation:
+		mutation = 0.0.
+        
+    + to copy-data from biped (object):
+        sourceGenome (object).
+    
+        fitness = biped get-fitness.
+        sourceGenome = biped get-genome.
+        birthGen = biped get-birth-generation.
+        
+        genome copy-genome from sourceGenome.
+	
+    + to get-value at index (int):
+        return (genome get-value at index).
+		
+    + to get-genome-data:
+        return (genome get-data).
+	 
+#    + to crossover with biped (object):
+#        genome crossover with (biped get-genome) with-chance CROSSOVER_CHANCE.
+
+    + to mutate with-chance chance (float) with-strength strength (float):
+        mutation = (genome mutate with-chance chance with-strength strength).
+        
+    + to set-fitness to-value value (float):
+        fitness = value.
+
+    + to get-fitness:
+        return fitness.
+        
+    + to destroy:
+        free genome.
+		
+        super destroy.
+}
+
+Object : BipedGenome {
+    + variables:
+        genomeData (list).
+        numGenes (int).
+        
+    + to set-numGenes as value (int):
+        numGenes = value.
+
+#    + to init:
+#		n (int).
+#		
+#		for n=0, n<numGenes, n+=1: {
+#			genomeData{n} = 0.0.
+#		}
+
+    + to randomize:
+        n (int).
+            
+        for n=0, n<numGenes, n+=1: {
+            genomeData{n} = random[MAX_VALUE].
+        }
+		
+    + to set-data from values (list):
+        n (int).
+            
+        for n=0, n<numGenes, n+=1: {
+            genomeData{n} = values{n}.
+        }
+   
+    + to get-value at index (int):
+        return genomeData{index}.
+        
+    + to get-data:
+        return genomeData.
+        
+    + to copy-genome from genome (object):
+        n (int).
+        sourceData (list).
+        
+        sourceData = genome get-data.
+            
+        for n=0, n<numGenes, n+=1: {
+            genomeData{n} = sourceData{n}.
+        }
+        
+    + to crossover with genome (object) with-chance chance (float):
+        i (int).
+        c, value (float).
+        otherData (list).
+        
+        otherData = genome get-data.
+            
+        for i=0, i<numGenes, i+=1: {
+            c = random[1.0].
+            
+            if c > chance: {
+                value = otherData{i}.
+ #               otherData{i} = genomeData{i}.
+                genomeData{i} = value.
+            }
+        }
+
+    + to mutate with-chance chance (float) with-strength strength (float):
+        i (int).
+        value, new-value, c, mutation, totalMut (float).
+         
+		totalMut = 0.0.
+        for i=0, i<numGenes, i+=1: {
+            c = random[1.0].
+            
+            if c <= chance: {
+#				print "chance: $chance, strength: $strength".
+                value = genomeData{i}.
+				mutation = ((random[MAX_VALUE] - value)*strength).
+				new-value = value + mutation.
+				totalMut += abs(mutation).
+                genomeData{i} = new-value.
+#				print "previous: $value, next: $new-value".
+            }
+        }
+	
+		return totalMut/numGenes.
+ 
+    + to destroy:
+        free genomeData.
+    
+        super destroy.
+}
+
+#Link : SensedLink {
+#	+ variables:
+#		velocity, rotVelocity (vector).
+#		acceleration, rotAcceleration (vector).
+#        
+#	+ to get-effective-acceleration:
+#		return acceleration.
+#        
+#	+ to get-effective-rotational-acceleration:
+#		return rotAcceleration.
+#        
+#	+ to iterate:
+#		lastVelocity, lastRotVelocity (vector).
+#		iteration-step (float).
+#    
+#		super iterate.
+#        
+#		iteration-step = (controller get-iteration-step).
+#        
+#		if iteration-step == 0: iteration-step = 1.
+#        
+#		lastVelocity = velocity.
+#		lastRotVelocity = rotVelocity.
+#        
+#		velocity = self get-velocity.
+#		rotVelocity = self get-rotational-velocity.
+#        
+#		acceleration = (velocity - lastVelocity)/iteration-step.
+#		rotAcceleration = (rotVelocity - lastRotVelocity)/iteration-step.
+#        
+#		acceleration = (velocity - lastVelocity).
+#		rotAcceleration = (rotVelocity - lastRotVelocity).
+#}
+
+Object : Source {
+    + to get-output:
+        return 0.0.
+ 
+    + to destroy:
+        super destroy.
+}
+
+Source : Neuron (aka Neurons) {
+    + variables:
+        num_inputs, num_feedbacks (int).
+        tv, v, tu, u, beta, u0, du, dv (float).
+        wy, y, wf, f (list).
+        
+    + to init:
+        num_inputs = 0.
+        num_feedbacks = 0.
+        tv = 0.0.
+        tu = 0.0.
+        beta = 0.0.
+        u0 = 0.0.
+        
+    + to reset:
+        u = 0.
+        v = 0.
+
+#	+ to randomize:
+#		u = random[MAX_RANDOM_U].
+#		v = random[MAX_RANDOM_V].
+        
+    + to get-num-inputs:
+        return num_inputs.
+        
+    + to get-num-feedbacks:
+        return num_feedbacks.
+        
+    + to insert-y input value (object) at index (int):
+        y{index} = value.
+        wy{index} = 0.0.
+            
+        if num_inputs <= index: {
+            num_inputs = index + 1.
+        }
+        
+    + to insert-f feedback value (object) at index (int):
+        f{index} = value.
+        wf{index} = 0.0.
+            
+        if num_feedbacks <= index: {
+            num_feedbacks = index + 1.
+        }
+        
+    + to insert-wy weight value (float) at index (int):
+        wy{index} = value.
+        
+    + to insert-wf weight value (float) at index (int):
+        wf{index} = value.
+        
+    + to set-tv as value (float):
+        tv = value.
+        
+    + to set-tu as value (float):
+        tu = value.
+        
+    + to set-beta as value (float):
+        beta = value.
+        
+    + to set-u0 as value (float):
+        u0 = value.
+        
+    + to get-output:
+        return max(0.0, u).
+        
+    + to calculate-delta:
+        i (int).
+        sumy, sumf (float).
+        
+        sumy = 0.0.
+        for i=0, i<num_inputs, i++: {
+            sumy += wy{i}*(y{i} get-output).
+        }
+        
+        sumf = 0.0.
+        for i=0, i<num_feedbacks, i++: {
+            sumf += wf{i}*(f{i} get-output).
+        }
+        
+        du = -u - (beta*v) + sumy + u0 + sumf.
+        
+        dv = -v + max(0.0, u).
+        
+    + to modify-state:
+        u += du*tu.
+        v += dv*tv.
+ 
+    + to destroy:
+        super destroy.
+}
+
+Source : Oscillator (aka Oscillators) {
+    + variables:
+        flexor, extensor (object).
+        
+    + to init:
+        flexor = new Neuron.
+        extensor = new Neuron.
+        
+        flexor insert-y input extensor at 0.
+        extensor insert-y input flexor at 0.
+        
+    + to reset:
+        flexor reset.
+        extensor reset.
+
+    + to randomize:
+        flexor randomize.
+        extensor randomize.
+        
+    + to get-flexor:
+        return flexor.
+        
+    + to get-extensor:
+        return extensor.
+        
+    + to insert-y-flexor input value (object) at index (int):
+        flexor insert-y input value at index.
+        
+    + to insert-y-extensor input value (object) at index (int):
+        extensor insert-y input value at index.
+        
+    + to insert-f-flexor feedback value (object) at index (int):
+        flexor insert-f feedback value at index.
+        
+    + to insert-f-extensor feedback value (object) at index (int):
+        extensor insert-f feedback value at index.
+        
+    + to insert-wy-flexor weight value (float) at index (int):
+        flexor insert-wy weight value at index.
+        
+    + to insert-wy-extensor weight value (float) at index (int):
+        extensor insert-wy weight value at index.
+        
+    + to insert-wf-flexor weight value (float) at index (int):
+        flexor insert-wf weight value at index.
+        
+    + to insert-wf-extensor weight value (float) at index (int):
+        extensor insert-wf weight value at index.
+        
+    + to set-tv as value (float):
+        flexor set-tv as value.
+        extensor set-tv as value.
+        
+    + to set-tu as value (float):
+        flexor set-tu as value.
+        extensor set-tu as value.
+        
+    + to set-beta as value (float):
+        flexor set-beta as value.
+        extensor set-beta as value.
+        
+    + to set-u0 as value (float):
+        flexor set-u0 as value.
+        extensor set-u0 as value.
+        
+    + to calculate-delta:
+        flexor calculate-delta.
+        extensor calculate-delta.
+        
+    + to modify-state:
+        flexor modify-state.
+        extensor modify-state.
+        
+    + to get-output:
+        return (flexor get-output) - (extensor get-output).
+        
+    + to destroy:
+        free flexor.
+        free extensor.
+		
+        super destroy.
+}
+
+Source : ValueHolder {
+    + variables:
+        v (float).
+        
+    + to set-value as value (float):
+        v = value.
+        
+    + to get-output:
+        return v.
+ 
+    + to destroy:
+        super destroy.
+}
