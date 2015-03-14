@@ -1,0 +1,3 @@
+This is an old piece of scripting code for the Breve simulation engine that creates and simulates a biped walking robot controlled by CPGs (Central Pattern Generators). This was part of my unfinished thesis work and the code is almost completely undocumented and unpolished so sorry about that. The script generates data that it's stored in CSV files and which can be used to restart the simulation with a trained robot.
+
+I'm no longer working on this so sorry for the lack of maintenance and documentation. Feel free to send me comments and I will answer any question that I can.
